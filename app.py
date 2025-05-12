@@ -62,7 +62,7 @@ azure_cfg = st.secrets["azure"]
 api_key     = azure_cfg["api_key"]
 api_version = azure_cfg["api_version"]
 azure_endpoint    = azure_cfg["endpoint"]
-st.markdown(f"endpoint: {endpoint}")
+st.markdown(f"endpoint: {azure_endpoint}")
 # 4. Set up the LLM client via Instructor
 llm = AzureOpenAI(
     api_key=api_key,
