@@ -154,11 +154,11 @@ def main():
             page = doc[i]
             pix = page.get_pixmap(dpi=300)
             img_bytes = pix.tobytes("png")
-            data_url = local_image_to_data_url(img_bytes, fmt="png",prompt_text=prompt_text)
+            data_url = local_image_to_data_url(img_bytes, fmt="png")
 
             with st.spinner(f"Processing page {i+1}..."):
                 try:
-                    table = extract_with_instructor(data_url)
+                    table = extract_with_instructor(data_url=data_url,prompt_text=prompt_text)
                     st.markdown(f"**Page {i+1}**")
                     st.dataframe(table.dataframe)
                 except Exception as e:
