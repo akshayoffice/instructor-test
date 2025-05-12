@@ -58,9 +58,11 @@ class Table(BaseModel):
             raise ValueError("No table extracted!")
         return vals
 
-api_key = os.environ['api_key']
-api_version = os.environ['api_version']
-azure_endpoint = os.environ['azure_endpoint']
+azure_cfg = st.secrets["azure"]
+api_key     = azure_cfg["api_key"]
+api_version = azure_cfg["api_version"]
+azure_endpoint    = azure_cfg["endpoint"]
+st.markdown(f"endpoint: {endpoint}")
 # 4. Set up the LLM client via Instructor
 llm = AzureOpenAI(
     api_key=api_key,
