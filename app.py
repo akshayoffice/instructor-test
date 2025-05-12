@@ -71,8 +71,8 @@ llm = AzureOpenAI(
 )
 client = instructor.from_openai(llm, mode=instructor.Mode.TOOLS)
 
-# 5. Extraction function using Instructor (now takes prompt too)
-def extract_with_instructor(data_url: str, model: str, prompt: str) -> Table:
+# 5. Extraction function using Instructor
+def extract_with_instructor(data_url: str, model: str = "gpt-4o",prompt_text= "Extract the all tables present") -> Table:
     return client.chat.completions.create(
         model=model,
         max_tokens=4000,
@@ -82,22 +82,33 @@ def extract_with_instructor(data_url: str, model: str, prompt: str) -> Table:
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": data_url}},
-                    {"type": "text", "text": prompt},
+                    {"type": "text", "text": "Extract the all tables present"},
                 ],
             }
         ],
     )
+def clean_header(raw_header):
+    """
+    Take a list of header strings (some may be empty or duplicated)
+    and return a new list where:
+      1. empty strings become "col_#"
+      2. duplicates get suffixes: name, name_1, name_2, …
+    """
+    counts = {}
+    cleaned = []
+    for idx, h in enumerate(raw_header):
+        h0 = h.strip() or f"col_{idx}"
+        cnt = counts.get(h0, 0)
+        counts[h0] = cnt + 1
+        if cnt:
+            cleaned.append(f"{h0}_{cnt}")
+        else:
+            cleaned.append(h0)
+    return cleaned
 
 # 6. Streamlit UI
 def main():
     st.title("📄 PDF Table Extractor")
-
-    # --- NEW: dynamic LLM model and prompt ---
-    llm_model = st.text_input(
-        "LLM model to use",
-        value="gpt-4o",
-        help="Enter any Azure/OpenAI model name, e.g. gpt-4o, gpt-35-turbo, etc."
-    )
     prompt_text = st.text_area(
         "Extraction prompt",
         value="Extract all tables present on this page as a markdown table.",
@@ -121,6 +132,7 @@ def main():
         with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
             for i, page in enumerate(pdf.pages, start=1):
                 tables = page.extract_tables()
+                st.markdown(f"**Table {tables}:**")
                 if not tables:
                     st.write(f"Page {i}: no tables found.")
                     continue
@@ -128,24 +140,26 @@ def main():
                 st.write(f"Page {i}:")
                 for tbl_idx, tbl in enumerate(tables, start=1):
                     raw_header = tbl[0]
-                    header = clean_header(raw_header)
+                    header = clean_header(raw_header)  # <— clean duplicates
                     data_rows = tbl[1:]
-                    df = pd.DataFrame(data_rows, columns=header)
+                    df = pd.DataFrame(data_rows, columns=header)  # now safe!
+
                     st.markdown(f"**Table {tbl_idx}:**")
                     st.dataframe(df)
 
     else:
-        st.subheader("Results via Instructor + Vision")
+        st.subheader("Results via Instructor + GPT-4o Vision")
+        # convert and process each page
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         for i in range(len(doc)):
             page = doc[i]
             pix = page.get_pixmap(dpi=300)
             img_bytes = pix.tobytes("png")
-            data_url = local_image_to_data_url(img_bytes, fmt="png")
+            data_url = local_image_to_data_url(img_bytes, fmt="png",prompt_text=prompt_text)
 
-            with st.spinner(f"Processing page {i+1} with {llm_model}…"):
+            with st.spinner(f"Processing page {i+1}..."):
                 try:
-                    table = extract_with_instructor(data_url, llm_model, prompt_text)
+                    table = extract_with_instructor(data_url)
                     st.markdown(f"**Page {i+1}**")
                     st.dataframe(table.dataframe)
                 except Exception as e:
