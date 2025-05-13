@@ -86,24 +86,50 @@ def extract_with_instructor(data_url: str, model: str = "gpt-4o",prompt_text= "E
             }
         ],
     )
+# def clean_header(raw_header):
+#     """
+#     Take a list of header strings (some may be empty or duplicated)
+#     and return a new list where:
+#       1. empty strings become "col_#"
+#       2. duplicates get suffixes: name, name_1, name_2, …
+#     """
+#     counts = {}
+#     cleaned = []
+#     for idx, h in enumerate(raw_header):
+#         h0 = h.strip() or f"col_{idx}"
+#         cnt = counts.get(h0, 0)
+#         counts[h0] = cnt + 1
+#         if cnt:
+#             cleaned.append(f"{h0}_{cnt}")
+#         else:
+#             cleaned.append(h0)
+#     return cleaned
+
 def clean_header(raw_header):
     """
-    Take a list of header strings (some may be empty or duplicated)
-    and return a new list where:
-      1. empty strings become "col_#"
-      2. duplicates get suffixes: name, name_1, name_2, …
+    Take a list of header values (some may be None or duplicates)
+    and return a list where:
+      1. non-str or empty entries become "col_<index>"
+      2. duplicate names get suffixes: name, name_1, name_2, …
     """
     counts = {}
     cleaned = []
     for idx, h in enumerate(raw_header):
-        h0 = h.strip() or f"col_{idx}"
-        cnt = counts.get(h0, 0)
-        counts[h0] = cnt + 1
+        # Safely coerce non-str to empty and strip whitespace
+        h_str = h.strip() if isinstance(h, str) else ""
+        # Fallback name if header cell is empty
+        base = h_str or f"col_{idx}"
+        # Count duplicates
+        cnt = counts.get(base, 0)
+        counts[base] = cnt + 1
+
+        # Append suffix if needed
         if cnt:
-            cleaned.append(f"{h0}_{cnt}")
+            cleaned.append(f"{base}_{cnt}")
         else:
-            cleaned.append(h0)
+            cleaned.append(base)
     return cleaned
+
 
 # 6. Streamlit UI
 def main():
